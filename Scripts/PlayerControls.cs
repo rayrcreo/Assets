@@ -6,8 +6,15 @@ public class PlayerControls : MonoBehaviour
 {
     public float moveSpeed = 5f;
     public float mouseSensitivity = 2f;
+    public Camera playerCamera; // Reference to the camera object
+    public float cameraDistance = 5f; // Distance of the camera from the player
+    public float jumpHeight = 2f; // Height of the jump
     private CharacterController characterController;
     private float verticalRotation = 0f;
+    private float horizontalRotation = 0f;
+    private bool wasMoving = false;
+    private Vector3 velocity;
+    private bool isGrounded;
 
     void Start()
     {
@@ -17,13 +24,26 @@ public class PlayerControls : MonoBehaviour
 
     void Update()
     {
+        isGrounded = characterController.isGrounded;
+        if (isGrounded && velocity.y < 0)
+        {
+            velocity.y = -2f;
+        }
+
         MovePlayer();
         RotateCamera();
+
+        if (Input.GetButtonDown("Jump") && isGrounded)
+        {
+            velocity.y = Mathf.Sqrt(jumpHeight * -2f * Physics.gravity.y);
+        }
+
+        velocity.y += Physics.gravity.y * Time.deltaTime;
+        characterController.Move(velocity * Time.deltaTime);
     }
 
     void MovePlayer()
     {
-        float moveDirectionY = characterController.velocity.y;
         Vector3 move = transform.right * Input.GetAxis("Horizontal") + transform.forward * Input.GetAxis("Vertical");
         characterController.Move(move * moveSpeed * Time.deltaTime);
     }
@@ -40,15 +60,29 @@ public class PlayerControls : MonoBehaviour
 
         if (move.magnitude > 0)
         {
+            if (!wasMoving)
+            {
+                // Reset freecam to default position
+                horizontalRotation = 0f;
+                playerCamera.transform.localRotation = Quaternion.Euler(verticalRotation, 0f, 0f);
+                playerCamera.transform.position = transform.position - playerCamera.transform.forward * cameraDistance;
+            }
+
             // Align camera with player's direction
             transform.Rotate(Vector3.up * mouseX);
-            Camera.main.transform.localRotation = Quaternion.Euler(verticalRotation, 0f, 0f);
+            playerCamera.transform.localRotation = Quaternion.Euler(verticalRotation, 0f, 0f);
+            playerCamera.transform.position = transform.position - playerCamera.transform.forward * cameraDistance;
+            wasMoving = true;
         }
-        else
+        else if (isGrounded)
         {
             // Free look
-            transform.Rotate(Vector3.up * mouseX);
-            Camera.main.transform.localRotation = Quaternion.Euler(verticalRotation, 0f, 0f);
+            horizontalRotation += mouseX;
+            Vector3 direction = new Vector3(0, 0, -cameraDistance);
+            Quaternion rotation = Quaternion.Euler(verticalRotation, horizontalRotation, 0);
+            playerCamera.transform.position = transform.position + rotation * direction;
+            playerCamera.transform.LookAt(transform.position);
+            wasMoving = false;
         }
     }
 }
