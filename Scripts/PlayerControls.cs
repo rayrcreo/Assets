@@ -5,6 +5,7 @@ using UnityEngine;
 public class PlayerControls : MonoBehaviour
 {
     public float moveSpeed = 5f;
+    public float dashSpeed = 10f;
     public float mouseSensitivity = 2f;
     public Camera playerCamera; // Reference to the camera object
     public float cameraDistance = 5f; // Distance of the camera from the player
@@ -17,11 +18,16 @@ public class PlayerControls : MonoBehaviour
     private bool isGrounded;
     private float timeSinceLastMove = 0f;
     private const float freeCamDelay = 2.5f;
+    private const float transitionSpeed = 2f; // Speed of the camera transition
+    private Vector3 originalCameraPosition;
+    private Quaternion originalCameraRotation;
 
     void Start()
     {
         characterController = GetComponent<CharacterController>();
         Cursor.lockState = CursorLockMode.Locked;
+        originalCameraPosition = playerCamera.transform.position;
+        originalCameraRotation = playerCamera.transform.rotation;
     }
 
     void Update()
@@ -34,6 +40,7 @@ public class PlayerControls : MonoBehaviour
 
         MovePlayer();
         RotateCamera();
+        Dash();
 
         if (Input.GetButtonDown("Jump") && isGrounded)
         {
@@ -84,16 +91,34 @@ public class PlayerControls : MonoBehaviour
             playerCamera.transform.localRotation = Quaternion.Euler(verticalRotation, 0f, 0f);
             playerCamera.transform.position = transform.position - playerCamera.transform.forward * cameraDistance;
             wasMoving = true;
+            timeSinceLastMove = 0f; // Reset the timer when there is movement
         }
-        else if (isGrounded && timeSinceLastMove >= freeCamDelay)
+        else
         {
-            // Free look
+            // Allow free camera movement
             horizontalRotation += mouseX;
-            Vector3 direction = new Vector3(0, 0, -cameraDistance);
-            Quaternion rotation = Quaternion.Euler(verticalRotation, horizontalRotation, 0);
-            playerCamera.transform.position = transform.position + rotation * direction;
-            playerCamera.transform.LookAt(transform.position);
-            wasMoving = false;
+            Vector3 targetPosition = transform.position - Quaternion.Euler(verticalRotation, horizontalRotation, 0) * Vector3.forward * cameraDistance;
+            Quaternion targetRotation = Quaternion.LookRotation(transform.position - targetPosition);
+
+            playerCamera.transform.position = Vector3.Lerp(playerCamera.transform.position, targetPosition, Time.deltaTime * transitionSpeed);
+            playerCamera.transform.rotation = Quaternion.Lerp(playerCamera.transform.rotation, targetRotation, Time.deltaTime * transitionSpeed);
+
+            if (isGrounded && timeSinceLastMove >= freeCamDelay)
+            {
+                // Free look
+                playerCamera.transform.position = Vector3.Lerp(originalCameraPosition, targetPosition, Time.deltaTime * transitionSpeed);
+                playerCamera.transform.rotation = Quaternion.Lerp(originalCameraRotation, targetRotation, Time.deltaTime * transitionSpeed);
+                wasMoving = false;
+            }
+        }
+    }
+
+    void Dash()
+    {
+        if (Input.GetKeyDown(KeyCode.LeftShift))
+        {
+            Vector3 dashDirection = transform.forward;
+            characterController.Move(dashDirection * dashSpeed * Time.deltaTime);
         }
     }
 }
