@@ -15,6 +15,8 @@ public class PlayerControls : MonoBehaviour
     private bool wasMoving = false;
     private Vector3 velocity;
     private bool isGrounded;
+    private float timeSinceLastMove = 0f;
+    private const float freeCamDelay = 2.5f;
 
     void Start()
     {
@@ -46,6 +48,15 @@ public class PlayerControls : MonoBehaviour
     {
         Vector3 move = transform.right * Input.GetAxis("Horizontal") + transform.forward * Input.GetAxis("Vertical");
         characterController.Move(move * moveSpeed * Time.deltaTime);
+
+        if (move.magnitude > 0)
+        {
+            timeSinceLastMove = 0f;
+        }
+        else
+        {
+            timeSinceLastMove += Time.deltaTime;
+        }
     }
 
     void RotateCamera()
@@ -74,7 +85,7 @@ public class PlayerControls : MonoBehaviour
             playerCamera.transform.position = transform.position - playerCamera.transform.forward * cameraDistance;
             wasMoving = true;
         }
-        else if (isGrounded)
+        else if (isGrounded && timeSinceLastMove >= freeCamDelay)
         {
             // Free look
             horizontalRotation += mouseX;
