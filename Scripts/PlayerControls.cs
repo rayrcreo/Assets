@@ -7,9 +7,11 @@ public class PlayerControls : MonoBehaviour
     public float moveSpeed = 5f;
     public float dashSpeed = 10f;
     public float jumpHeight = 2f; // Height of the jump
+    public float mouseSensitivity = 100f; // Sensitivity of the mouse
     private CharacterController characterController;
     private Vector3 velocity;
     private bool isGrounded;
+    private float xRotation = 0f;
 
     void Start()
     {
@@ -27,6 +29,7 @@ public class PlayerControls : MonoBehaviour
 
         MovePlayer();
         Dash();
+        RotatePlayer();
 
         if (Input.GetButtonDown("Jump") && isGrounded)
         {
@@ -50,5 +53,17 @@ public class PlayerControls : MonoBehaviour
             Vector3 dashDirection = transform.forward;
             characterController.Move(dashDirection * dashSpeed * Time.deltaTime);
         }
+    }
+
+    void RotatePlayer()
+    {
+        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
+        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
+
+        xRotation -= mouseY;
+        xRotation = Mathf.Clamp(xRotation, -90f, 90f);
+
+        transform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+        characterController.transform.Rotate(Vector3.up * mouseX);
     }
 }
